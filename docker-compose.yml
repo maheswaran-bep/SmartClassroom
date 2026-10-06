@@ -1,10 +1,10 @@
 services:
 
   mysql:
-  build:
-    context: .
-    dockerfile: db/Dockerfile
-  image: smartclassroom-mysql:latest
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    image: smartclassroom-mysql:latest
     container_name: smartclassroom-mysql
     restart: unless-stopped
 
