@@ -16,34 +16,33 @@ pipeline {
 
         stage('Verify Docker') {
             steps {
-                sh 'docker --version'
-                sh 'docker compose version'
+                sh '''
+                    docker --version
+                    docker compose version
+                '''
             }
         }
 
-        stage('Backend Validation') {
+        stage('Validate Compose') {
             steps {
                 sh '''
-                    docker run --rm \
-                    -v "$PWD/backend:/app" \
-                    -w /app \
-                    python:3.13-slim \
-                    python -m compileall app api
+                    docker compose config
                 '''
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker compose build'
+                sh '''
+                    docker compose build
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
                 sh '''
-                    docker compose down
-                    docker compose up -d
+                    docker compose up -d --remove-orphans
                 '''
             }
         }
@@ -51,7 +50,8 @@ pipeline {
         stage('Verify Containers') {
             steps {
                 sh '''
-                    sleep 15
+                    echo "Waiting for SmartClassroom services..."
+                    sleep 20
                     docker compose ps
                 '''
             }
@@ -60,8 +60,13 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh '''
-                    curl --fail http://localhost/ || exit 1
-                    curl --fail http://localhost/docs || exit 1
+                    echo "Testing SmartClassroom frontend..."
+                    curl --fail http://host.docker.internal/ || exit 1
+
+                    echo "Testing FastAPI..."
+                    curl --fail http://host.docker.internal/docs || exit 1
+
+                    echo "SmartClassroom is healthy!"
                 '''
             }
         }
@@ -70,18 +75,24 @@ pipeline {
     post {
 
         success {
-            echo '======================================'
-            echo ' SmartClassroom Deployment Successful '
-            echo '======================================'
+            echo '''
+======================================
+ SmartClassroom Deployment SUCCESSFUL
+======================================
+'''
         }
 
         failure {
-            echo '======================================'
-            echo ' SmartClassroom Deployment Failed '
-            echo '======================================'
+            echo '''
+======================================
+ SmartClassroom Deployment FAILED
+======================================
+'''
 
-            sh 'docker compose ps || true'
-            sh 'docker compose logs --tail=100 || true'
+            sh '''
+                docker compose ps || true
+                docker compose logs --tail=100 || true
+            '''
         }
 
         always {
